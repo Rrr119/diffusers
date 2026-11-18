@@ -1,0 +1,17 @@
+{
+  "root": "/home/dev/feedback/uid24416",
+  "B": "/home/dev/feedback/uid24416",
+  "sha": "e84bda1c0005da3f48cc4c899635438cb0aa13c1",
+  "wslDistro": "Ubuntu-26.04",
+  "source": {
+    "owner": "huggingface",
+    "repo": "diffusers",
+    "sha": "e84bda1c0005da3f48cc4c899635438cb0aa13c1"
+  },
+  "fork": {
+    "owner": "Rrr119",
+    "repo": "diffusers",
+    "cloneUrl": "https://github.com/Rrr119/diffusers.git"
+  },
+  "at": "2026-11-18T01:02:30.842Z"
+}

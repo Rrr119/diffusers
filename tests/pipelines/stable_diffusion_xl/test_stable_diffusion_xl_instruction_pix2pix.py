@@ -139,6 +139,53 @@ class StableDiffusionXLInstructPix2PixPipelineTesterConfig(BasePipelineTesterCon
 class TestStableDiffusionXLInstructPix2PixPipeline(
     StableDiffusionXLInstructPix2PixPipelineTesterConfig, PipelineTesterMixin
 ):
+    def test_stable_diffusion_xl_pix2pix_custom_timesteps(self):
+        sd_pipe = self.get_pipeline()
+
+        inputs = self.get_dummy_inputs()
+        default_image = sd_pipe(**inputs).images
+
+        # Timesteps matching the default 2-step schedule must reproduce the default output.
+        default_timesteps = sd_pipe.scheduler.timesteps.tolist()
+        inputs = self.get_dummy_inputs()
+        del inputs["num_inference_steps"]
+        inputs["timesteps"] = default_timesteps
+        timesteps_image = sd_pipe(**inputs).images
+        assert timesteps_image.shape == (1, 3, 64, 64)
+        assert torch.allclose(timesteps_image, default_image, atol=1e-4, rtol=1e-4)
+
+        # A different schedule should change the output.
+        inputs = self.get_dummy_inputs()
+        del inputs["num_inference_steps"]
+        inputs["timesteps"] = [900, 200]
+        custom_image = sd_pipe(**inputs).images
+        assert (custom_image - default_image).abs().max() > 1e-3
+
+    def test_stable_diffusion_xl_pix2pix_custom_sigmas(self):
+        sd_pipe = self.get_pipeline()
+
+        inputs = self.get_dummy_inputs()
+        default_image = sd_pipe(**inputs).images
+
+        # Sigmas matching the default 2-step schedule must reproduce the default output.
+        default_sigmas = sd_pipe.scheduler.sigmas.tolist()
+        inputs = self.get_dummy_inputs()
+        del inputs["num_inference_steps"]
+        inputs["sigmas"] = default_sigmas
+        sigmas_image = sd_pipe(**inputs).images
+        assert sigmas_image.shape == (1, 3, 64, 64)
+        assert torch.allclose(sigmas_image, default_image, atol=1e-4, rtol=1e-4)
+
+    def test_stable_diffusion_xl_pix2pix_timesteps_sigmas_mutually_exclusive(self):
+        sd_pipe = self.get_pipeline()
+
+        inputs = self.get_dummy_inputs()
+        del inputs["num_inference_steps"]
+        inputs["timesteps"] = [900, 200]
+        inputs["sigmas"] = [7.0, 1.0, 0.0]
+        with pytest.raises(ValueError, match="Only one of `timesteps` or `sigmas`"):
+            sd_pipe(**inputs)
+
     def test_inference_batch_single_identical(self):
         super().test_inference_batch_single_identical(expected_max_diff=3e-3)
 

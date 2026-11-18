@@ -194,3 +194,27 @@ If you're looking for some interesting ways to use the InstructPix2Pix training 
 ## Stable Diffusion XL
 
 There's an equivalent `train_instruct_pix2pix_sdxl.py` script for [Stable Diffusion XL](https://huggingface.co/papers/2307.01952). Please refer to the docs [here](./README_sdxl.md) to learn more.
+
+## Custom noise schedules for image editing
+
+The InstructPix2Pix pipelines (`StableDiffusionInstructPix2PixPipeline` and
+`StableDiffusionXLInstructPix2PixPipeline`) accept a pluggable scheduler and custom `timesteps` or `sigmas`, so you
+can override the default noise schedule without retraining. Custom schedules only work with schedulers whose
+`set_timesteps` accepts them, such as `EulerDiscreteScheduler` or `DPMSolverMultistepScheduler`; otherwise the
+pipeline raises a `ValueError`.
+
+[`run_custom_schedule.py`](./run_custom_schedule.py) is a standalone inference script demonstrating this:
+
+```bash
+python run_custom_schedule.py \
+    --model_id timbrooks/instruct-pix2pix \
+    --image_url https://hf.co/datasets/diffusers/diffusers-images-docs/resolve/main/mountain.png \
+    --prompt "make the mountains snowy" \
+    --scheduler euler \
+    --timesteps 999 750 500 250 \
+    --output edited.png
+```
+
+Pass `--sigmas` instead of `--timesteps` to drive the schedule from sigmas (the last sigma should be `0.0`). Only one
+of the two can be used at a time. See the Schedulers [guide](https://huggingface.co/docs/diffusers/main/en/using-diffusers/schedulers)
+for supported schedulers and ready-made schedules such as [AYS](https://research.nvidia.com/labs/toronto-ai/AlignYourSteps/).

@@ -136,6 +136,11 @@ image = pipeline(
 
 For v-prediction/zero-SNR rescaling on older checkpoints, see [Legacy checkpoints](./legacy_checkpoints#rescaling-schedules).
 
+The same `timesteps` and `sigmas` arguments work on image editing pipelines too, including
+[`StableDiffusionInstructPix2PixPipeline`](../api/pipelines/pix2pix) and
+[`StableDiffusionXLInstructPix2PixPipeline`](../api/pipelines/pix2pix). Swap in a scheduler that supports custom
+schedules and pass the schedule alongside the input image and edit instruction.
+
 ## Timestep spacing
 
 Timestep spacing refers to the specific steps *t* to sample from the schedule. Diffusers provides three spacing types as shown below.

@@ -26,6 +26,7 @@ from diffusers import (
     AutoencoderKL,
     DDIMScheduler,
     EulerAncestralDiscreteScheduler,
+    EulerDiscreteScheduler,
     LMSDiscreteScheduler,
     PNDMScheduler,
     StableDiffusionInstructPix2PixPipeline,
@@ -190,6 +191,58 @@ class TestStableDiffusionInstructPix2PixPipeline(
         expected_slice = torch.tensor([0.6674, 0.3879, 0.4447, 0.5375, 0.5464, 0.4881, 0.3896, 0.5467, 0.4923])
         # fmt: on
         assert_tensors_close(image[0, -1, -3:, -3:].flatten(), expected_slice, atol=1e-3)
+
+    def test_stable_diffusion_pix2pix_custom_timesteps(self):
+        components = self.get_dummy_components()
+        components["scheduler"] = EulerDiscreteScheduler.from_config(components["scheduler"].config)
+        sd_pipe = self.get_pipeline(**components)
+
+        inputs = self.get_dummy_inputs()
+        default_image = sd_pipe(**inputs).images
+
+        # Timesteps matching the default 2-step schedule must reproduce the default output.
+        default_timesteps = sd_pipe.scheduler.timesteps.tolist()
+        inputs = self.get_dummy_inputs()
+        del inputs["num_inference_steps"]
+        inputs["timesteps"] = default_timesteps
+        timesteps_image = sd_pipe(**inputs).images
+        assert timesteps_image.shape == (1, 3, 32, 32)
+        assert_tensors_close(timesteps_image, default_image, atol=1e-4, rtol=1e-4)
+
+        # A different schedule should change the output.
+        inputs = self.get_dummy_inputs()
+        del inputs["num_inference_steps"]
+        inputs["timesteps"] = [900, 200]
+        custom_image = sd_pipe(**inputs).images
+        assert (custom_image - default_image).abs().max() > 1e-3
+
+    def test_stable_diffusion_pix2pix_custom_sigmas(self):
+        components = self.get_dummy_components()
+        components["scheduler"] = EulerDiscreteScheduler.from_config(components["scheduler"].config)
+        sd_pipe = self.get_pipeline(**components)
+
+        inputs = self.get_dummy_inputs()
+        default_image = sd_pipe(**inputs).images
+
+        # Sigmas matching the default 2-step schedule must reproduce the default output.
+        default_sigmas = sd_pipe.scheduler.sigmas.tolist()
+        inputs = self.get_dummy_inputs()
+        del inputs["num_inference_steps"]
+        inputs["sigmas"] = default_sigmas
+        sigmas_image = sd_pipe(**inputs).images
+        assert sigmas_image.shape == (1, 3, 32, 32)
+        assert_tensors_close(sigmas_image, default_image, atol=1e-4, rtol=1e-4)
+
+    def test_stable_diffusion_pix2pix_custom_timesteps_unsupported_scheduler(self):
+        # PNDMScheduler.set_timesteps does not accept custom timesteps/sigmas.
+        sd_pipe = self.get_pipeline()
+        assert isinstance(sd_pipe.scheduler, PNDMScheduler)
+
+        inputs = self.get_dummy_inputs()
+        del inputs["num_inference_steps"]
+        inputs["timesteps"] = [900, 200]
+        with pytest.raises(ValueError, match="does not support custom"):
+            sd_pipe(**inputs)
 
     def test_inference_batch_single_identical(self):
         super().test_inference_batch_single_identical(expected_max_diff=3e-3)

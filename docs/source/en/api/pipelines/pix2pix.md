@@ -27,6 +27,43 @@ You can find additional information about InstructPix2Pix in the [paper](https:/
 > [!TIP]
 > Make sure to check out the Schedulers [guide](../../using-diffusers/schedulers) to learn how to explore the tradeoff between scheduler speed and quality, and see the [reuse components across pipelines](../../using-diffusers/loading#reusing-models-in-multiple-pipelines) section to learn how to efficiently load the same components into multiple pipelines.
 
+## Custom noise schedules
+
+Both InstructPix2Pix pipelines accept a pluggable scheduler and let you override the default noise schedule with custom
+`timesteps` or `sigmas`. This makes it possible to shorten the edit to a few steps or to use a curated schedule (such as
+the [Align Your Steps](https://research.nvidia.com/labs/toronto-ai/AlignYourSteps/) schedule) without changing the
+checkpoint.
+
+Swap the scheduler with [`~ConfigMixin.from_config`] so the new scheduler keeps the trained `num_train_timesteps` and
+related settings:
+
+```py
+import torch
+from diffusers import StableDiffusionInstructPix2PixPipeline, EulerDiscreteScheduler
+from diffusers.utils import load_image
+
+pipe = StableDiffusionInstructPix2PixPipeline.from_pretrained(
+    "timbrooks/instruct-pix2pix", torch_dtype=torch.float16
+).to("cuda")
+pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+
+image = load_image(
+    "https://hf.co/datasets/diffusers/diffusers-images-docs/resolve/main/mountain.png"
+).resize((512, 512))
+
+edited_image = pipe(
+    prompt="make the mountains snowy",
+    image=image,
+    timesteps=[999, 750, 500, 250],
+).images[0]
+```
+
+`timesteps` must be in descending order. You can pass `sigmas` instead (the last sigma should be `0.0`), but only one
+of the two can be used at a time. Both arguments only work with schedulers whose `set_timesteps` accepts them -
+otherwise the pipeline raises a `ValueError` telling you to pick a compatible scheduler. See the Schedulers
+[guide](../../using-diffusers/schedulers#timestep-schedules) for the full list of supported options and the
+[AYS schedules](../../using-diffusers/schedulers#sigmas) example.
+
 ## StableDiffusionInstructPix2PixPipeline
 [[autodoc]] StableDiffusionInstructPix2PixPipeline
 	- __call__
